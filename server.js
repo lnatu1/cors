@@ -1,15 +1,28 @@
-// Listen on a specific host via the HOST environment variable
-var host = process.env.HOST || "0.0.0.0";
-// Listen on a specific port via the PORT environment variable
-var port = process.env.PORT || 8080;
+const express = require("express");
+const cors = require("cors");
+const axios = require("axios");
 
-var cors_proxy = require("cors-anywhere");
-cors_proxy
-  .createServer({
-    originWhitelist: [], // Allow all origins
-    requireHeader: ["origin", "x-requested-with"],
-    removeHeaders: ["cookie", "cookie2"],
-  })
-  .listen(port, host, function () {
-    console.log("Running CORS Anywhere on " + host + ":" + port);
-  });
+const app = express();
+
+app.use(cors());
+
+app.get("/proxy", async (req, res) => {
+  const { url } = req.query;
+  if (!url) {
+    return res.status(400).json({ error: "Missing URL query parameter" });
+  }
+
+  try {
+    const response = await axios.get(url, { responseType: "arraybuffer" });
+    res.header("Content-Type", response.headers["content-type"]);
+    res.send(response.data);
+  } catch (error) {
+    console.error("Error fetching URL:", error);
+    res.status(500).json({ error: "Failed to fetch URL" });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`CORS Proxy Server running on port ${PORT}`);
+});
